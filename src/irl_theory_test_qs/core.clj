@@ -5,6 +5,23 @@
 
 (def base-url "http://theory-tester.com/questions/")
 
+(defn get-max-value
+  "Get the max value of selected nodes' content (integers) on a page"
+  [url selector]
+  (let [all-nodes (->  (client/get url)
+                       (:body)
+                       (html/html-snippet)
+                       (html/select selector))
+        max-value (->> all-nodes
+                       (keep
+                        #(try (->> (:content %)
+                                   (first)
+                                   (Integer/parseInt))
+                              (catch NumberFormatException _
+                                nil)))
+                       (apply max))]
+    max-value))
+
 (defn extract-text
   "Extract the text from a HTML element and sanitise it"
   [node]
@@ -47,5 +64,7 @@
             {:id question-num}
             parsers)))
 
-(defn -main [& args]
-  (println "Running with args:" args))
+(defn -main [& _]
+  (let [last-page-num     (get-max-value base-url [:.pagination :li :a])
+        last-page-url     (str base-url "?page=" last-page-num)
+        last-question-num (get-max-value last-page-url [:.questionList-single-numbering :h3])]))
